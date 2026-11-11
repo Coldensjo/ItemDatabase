@@ -440,7 +440,11 @@
 		link.onclick = () => copy(`${location.origin}${location.pathname}#item=${id}`, link);
 		const copyID = el('button', 'ghost', `Copy ID ${id}`);
 		copyID.onclick = () => copy(String(id), copyID);
-		actions.append(link, copyID);
+		const wowhead = el('a', 'ghost', 'Wowhead');
+		wowhead.href = `https://www.wowhead.com/forever/item=${id}`;
+		wowhead.target = '_blank';
+		wowhead.rel = 'noopener';
+		actions.append(link, copyID, wowhead);
 		if (r.set) {
 			const same = el('button', 'ghost', 'Show whole set');
 			same.onclick = () => { const item = state.item; state = blank(); state.item = item; state.q = `set:${META.sets[r.set].n.toLowerCase().split(' ').pop()}`; syncControls(); applyFilters(); };

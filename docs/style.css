@@ -54,6 +54,8 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 
 .ghost:hover { border-color: var(--accent); }
 
+a.ghost { color: inherit; font: inherit; text-decoration: none; display: inline-block; }
+
 .wide { width: 100%; margin-top: 6px; }
 
 .topbar {
