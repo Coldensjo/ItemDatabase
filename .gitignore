@@ -1,0 +1,8 @@
+tools/cache/
+tools/node_modules/
+docs/data/
+docs/icons/
+state/
+site/
+*.tmp
+addon/ItemHarvest/Missing.lua

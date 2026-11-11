@@ -1,0 +1,8 @@
+{
+	"name": "item-database-tools",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@rhyster/wow-casc-dbc": "^2.16.23"
+	}
+}

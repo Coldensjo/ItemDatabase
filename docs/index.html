@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Item Database</title>
+	<meta name="description" content="Every World of Warcraft item, read from the game files: filter, search and compare with in-game tooltips.">
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<header class="topbar">
+		<button id="menu" class="menu-button" aria-label="Show filters">&#9776;</button>
+		<a class="brand" href="#"><span id="site-title">Item Database</span></a>
+		<div class="search">
+			<input id="query" type="search" placeholder='Search: sword ilvl>=40 agi>10 q:rare "chance on hit"' autocomplete="off" spellcheck="false">
+			<button id="help-button" class="ghost" title="Search syntax">?</button>
+		</div>
+		<div id="build-info" class="build-info"></div>
+	</header>
+
+	<div class="layout">
+		<aside id="sidebar" class="sidebar">
+			<section>
+				<h3>Quality</h3>
+				<div id="f-quality" class="chips"></div>
+			</section>
+			<section>
+				<h3>Type</h3>
+				<div id="f-class" class="tree"></div>
+			</section>
+			<section>
+				<h3>Slot</h3>
+				<div id="f-slot" class="chips"></div>
+			</section>
+			<section class="ranges">
+				<h3>Levels</h3>
+				<label>Item level <span><input id="f-il-min" type="number" min="0" placeholder="min"> &ndash; <input id="f-il-max" type="number" min="0" placeholder="max"></span></label>
+				<label>Required level <span><input id="f-rl-min" type="number" min="0" placeholder="min"> &ndash; <input id="f-rl-max" type="number" min="0" placeholder="max"></span></label>
+			</section>
+			<section>
+				<h3>Usable by</h3>
+				<select id="f-usable"></select>
+			</section>
+			<section>
+				<h3>Binding</h3>
+				<select id="f-bind">
+					<option value="">Any</option>
+					<option value="0">Does not bind</option>
+					<option value="1">Binds when picked up</option>
+					<option value="2">Binds when equipped</option>
+					<option value="3">Binds when used</option>
+					<option value="4">Quest item</option>
+				</select>
+			</section>
+			<section>
+				<h3>Properties</h3>
+				<div id="f-flags" class="chips"></div>
+			</section>
+			<section>
+				<h3>Stats and values</h3>
+				<div id="f-rules"></div>
+				<button id="add-rule" class="ghost wide">+ Add condition</button>
+			</section>
+			<section id="changes-section" hidden>
+				<h3>Updates</h3>
+				<select id="f-change"></select>
+			</section>
+			<button id="reset" class="ghost wide">Clear all filters</button>
+		</aside>
+
+		<main class="main">
+			<div class="bar">
+				<div id="count" class="count"></div>
+				<div class="bar-right">
+					<button id="columns-button" class="ghost">Columns</button>
+					<button id="share" class="ghost">Copy link</button>
+				</div>
+			</div>
+			<div id="columns-menu" class="popover" hidden></div>
+			<div id="list" class="list" tabindex="0">
+				<div id="head" class="row head"></div>
+				<div id="viewport" class="viewport"><div id="spacer" class="spacer"></div></div>
+			</div>
+		</main>
+
+		<aside id="detail" class="detail" hidden></aside>
+	</div>
+
+	<div id="help" class="popover help" hidden></div>
+	<div id="tip" class="tooltip floating" hidden></div>
+	<footer class="foot">
+		<span id="foot-info"></span>
+		World of Warcraft is a trademark of Blizzard Entertainment. Fan made, not affiliated.
+	</footer>
+	<script src="app.js"></script>
+</body>
+</html>

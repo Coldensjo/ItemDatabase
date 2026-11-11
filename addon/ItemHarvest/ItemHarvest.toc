@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: Item Harvest
+## Notes: Asks the server for every item the game client has not been sent yet, so the item database website can read them from the game cache.
+## Author: Siz
+## Version: 1.0.0
+## SavedVariables: ItemHarvestDB
+
+Missing.lua
+ItemHarvest.lua
