@@ -81,7 +81,10 @@
 		timed: ['Limited duration', (r) => !!r.dur],
 		vendor: ['Sold by vendors (has a buy price)', (r) => !!r.buy],
 		nosell: ['No sell price', (r) => !r.sell],
+		nojunk: ['Hide test and unused items', (r) => !JUNK.test(r.n)],
 	};
+	// Names the developers give to items that are not meant to be seen.
+	const JUNK = /\[PH\]|TEST|^Test |\(Test\)|Deprecated|DEPRECATED|^OLD|^zz|DEBUG|^Monster - |UNUSED|^QA|\(old\d*\)|^\[|DND|DNT|NYI/;
 	const DEFAULT_COLUMNS = ['il', 'rl', 'slot', 'type'];
 
 	const className = (r) => META.classes[r.c] || '';
@@ -353,21 +356,24 @@
 		if (!r) return box;
 		box.append(el('div', `tt-name q${r.q}`, r.n));
 		const lines = (await tooltipLines(id)) || [];
+		const made = [];
 		for (const line of lines) {
 			if (line[0] === 'set') { appendSet(box, line[1]); continue; }
-			if (line[0] === 'item') { if (!nested) box.append(await buildTooltip(line[1], true)); continue; }
+			if (line[0] === 'item') { made.push(line[1]); continue; }
 			const row = el('div', `line s${line[0]}`);
 			row.append(el('span', '', line[1]));
 			if (line[2]) row.append(el('span', '', line[2]));
 			box.append(row);
 		}
-		if (r.sell) {
+		if (r.sell && !nested) {
 			const row = el('div', 'line');
 			const left = el('span', '', 'Sell Price: ');
 			left.append(money(r.sell));
 			row.append(left);
 			box.append(row);
 		}
+		// A recipe ends with the item it creates.
+		if (!nested) for (const other of made) box.append(await buildTooltip(other, true));
 		return box;
 	}
 

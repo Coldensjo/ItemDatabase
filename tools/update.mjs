@@ -18,7 +18,7 @@ const cacheFile = path.join(config.wow_path, 'Cache', 'ADB', config.locale ?? 'e
 const logFile = path.join(ROOT, 'state', 'update.log');
 
 function log(text) {
-	const line = `${new Date().toISOString().slice(0, 19).replace('T', ' ')} ${text}`;
+	const line = `${new Date().toLocaleString('sv-SE')} ${text}`;
 	console.log(line);
 	fs.mkdirSync(path.dirname(logFile), { recursive: true });
 	fs.appendFileSync(logFile, line + '\n');
