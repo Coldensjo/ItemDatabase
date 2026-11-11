@@ -309,6 +309,7 @@
 		spacer.style.height = `${results.length * ROW}px`;
 		if (!results.length) {
 			spacer.style.height = 'auto';
+			spacer.textContent = '';
 			spacer.append(el('div', 'empty', 'No items match these filters.'));
 			return;
 		}
