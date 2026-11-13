@@ -103,12 +103,31 @@ if (!firstRun && (added.length || changed.length || removed.length)) {
 }
 fs.writeFileSync(seenFile, JSON.stringify({ build: gd.build, hash: hashes, changes: seen.changes }));
 
+// Where items drop, from tools/data/drops.json (made by drops.mjs). Added after the change
+// hashes above, so a new drops file does not mark every item as changed.
+const dropsFile = path.join(ROOT, 'tools', 'data', 'drops.json');
+const drops = fs.existsSync(dropsFile) ? JSON.parse(fs.readFileSync(dropsFile, 'utf8')) : null;
+for (const record of records) {
+	const found = drops?.items[record.id];
+	if (found) record.dr = found.n;
+}
+
 // Output
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, 'tt'), { recursive: true });
 fs.writeFileSync(path.join(OUT, 'items.json'), JSON.stringify(records));
 for (let i = 0; i < tooltips.length; i += CHUNK) {
 	fs.writeFileSync(path.join(OUT, 'tt', `${i / CHUNK}.json`), JSON.stringify(tooltips.slice(i, i + CHUNK)));
+}
+// Drop sources in the same chunks as the tooltips, each chunk with the creatures it names.
+if (drops) {
+	fs.mkdirSync(path.join(OUT, 'dr'));
+	for (let i = 0; i < records.length; i += CHUNK) {
+		const list = records.slice(i, i + CHUNK).map((record) => drops.items[record.id]?.s ?? null);
+		const sources = {};
+		for (const entry of list) for (const [source] of entry ?? []) sources[source] = drops.npcs[source];
+		fs.writeFileSync(path.join(OUT, 'dr', `${i / CHUNK}.json`), JSON.stringify({ sources, items: list }));
+	}
 }
 const classes = {};
 for (const [id, name] of builder.className) classes[id] = name;
@@ -131,6 +150,7 @@ const meta = {
 	chrRaces: Object.fromEntries(builder.races.map((row) => [row.ID, row.Name_lang])),
 	sets: builder.sets(),
 	unknown: unknown.length,
+	drops: drops ? drops.source : null,
 	changes: seen.changes,
 };
 fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta));

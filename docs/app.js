@@ -16,6 +16,7 @@
 	let META = null;
 	const byID = new Map(); // item id -> position in ITEMS
 	const chunks = new Map(); // chunk number -> promise of tooltip lines
+	const dropChunks = new Map(); // chunk number -> promise of drop sources
 
 	// Filters. Everything here is written to the address bar, so a view can be shared.
 	const blank = () => ({
@@ -68,6 +69,7 @@
 		equip: ['Equip effect', (r) => !!r.fx && r.fx.some((t) => t.startsWith('Equip:'))],
 		proc: ['Chance on hit', (r) => !!r.fx && r.fx.some((t) => t.startsWith('Chance on hit:'))],
 		quest: ['Starts a quest', (r) => !!r.quest],
+		drop: ['Dropped by creatures or chests', (r) => !!r.dr],
 		reagent: ['Crafting reagent', (r) => !!r.rg],
 		conjured: ['Conjured', (r) => !!r.conj],
 		classonly: ['Class restricted', (r) => !!r.cm],
@@ -81,10 +83,15 @@
 		timed: ['Limited duration', (r) => !!r.dur],
 		vendor: ['Sold by vendors (has a buy price)', (r) => !!r.buy],
 		nosell: ['No sell price', (r) => !r.sell],
-		nojunk: ['Hide test and unused items', (r) => !JUNK.test(r.n)],
+		nojunk: ['Hide test and unused items', (r) => !isJunk(r)],
 	};
-	// Names the developers give to items that are not meant to be seen.
-	const JUNK = /\[PH\]|TEST|^Test |\(Test\)|Deprecated|DEPRECATED|^OLD|^zz|DEBUG|^Monster - |UNUSED|^QA|\(old\d*\)|^\[|DND|DNT|NYI/;
+	// Names the developers give to items that are not meant to be seen. JUNK is case sensitive
+	// ("OLD" but not "Old"); JUNK_ANY_CASE catches "Fast Test Bow", "90 Epic Frost Bindings" and the like.
+	const JUNK = /\[PH\]|\bTEST\b|Deprecated|DEPRECATED|^OLD|^zz|\bDEBUG\b|^Monster - |\bUNUSED\b|^QA|\(old\d*\)|^\[|DND|DNT|NYI|\b[A-D]\d\d\b|^[a-z]+$/;
+	const JUNK_ANY_CASE = /(?<!high )\btest\b|^\d+ (epic|rare|green|blue|purple)\b|^unused\b|^internal\b/i;
+	// Artifact quality (6) is only used for developer items in this game (Alex's Ring of Audacity...).
+	const isJunk = (r) => r.q === 6 || JUNK.test(r.n) || JUNK_ANY_CASE.test(r.n);
+	const wowheadURL = (id) => `https://www.wowhead.com/forever/item=${id}`;
 	const DEFAULT_COLUMNS = ['il', 'rl', 'slot', 'type'];
 
 	const className = (r) => META.classes[r.c] || '';
@@ -192,6 +199,7 @@
 		if (word === 'is' || word === 'has') {
 			if (valueText === 'boe') return (r) => r.b === 2;
 			if (valueText === 'bop') return (r) => r.b === 1;
+			if (valueText === 'test' || valueText === 'junk') return isJunk;
 			if (FLAGS[valueText]) return FLAGS[valueText][1];
 			const key = ALIAS[valueText];
 			return key ? (r) => !!FIELDS[key].get(r) : null;
@@ -326,7 +334,12 @@
 			row.style.top = `${index * ROW}px`;
 			row.dataset.id = r.id;
 			const name = el('div', 'cell name');
-			name.append(icon(r.i, 28), el('span', `q${r.q}`, r.n));
+			const wowhead = el('a', 'wowhead', 'Wowhead');
+			wowhead.href = wowheadURL(r.id);
+			wowhead.target = '_blank';
+			wowhead.rel = 'noopener';
+			wowhead.title = 'Open on Wowhead';
+			name.append(icon(r.i, 28), el('span', `item-name q${r.q}`, r.n), wowhead);
 			row.append(name);
 			for (const key of cols) {
 				const cell = el('div', TEXT_COLUMNS[key] ? 'cell text hide-small' : 'cell');
@@ -349,6 +362,53 @@
 			chunks.set(chunk, fetch(`data/tt/${chunk}.json`).then((response) => response.json()));
 		}
 		return chunks.get(chunk).then((lines) => lines[position % META.chunk]);
+	}
+
+	// [[name, min level, max level, rank, maps, chance, quest, source ID], ...] or null.
+	// Source IDs below zero are objects (chests, veins, herbs).
+	async function dropSources(id) {
+		const position = byID.get(id);
+		if (position === undefined || !ITEMS[position].dr) return null;
+		const chunk = Math.floor(position / META.chunk);
+		if (!dropChunks.has(chunk)) {
+			dropChunks.set(chunk, fetch(`data/dr/${chunk}.json`).then((response) => response.json()));
+		}
+		const { sources, items } = await dropChunks.get(chunk);
+		return (items[position % META.chunk] || []).map(([source, chance, quest]) => [...sources[source], chance, !!quest, source]);
+	}
+
+	const RANK = ['', 'Elite', 'Rare Elite', 'Boss', 'Rare'];
+	const SHOWN_DROPS = 8;
+
+	function dropSection(r, list) {
+		const box = el('div', 'drops');
+		const objects = list.filter((source) => source[7] < 0).length;
+		const heading = objects === 0 ? 'Dropped by' : objects === list.length ? 'Found in' : 'Dropped by or found in';
+		box.append(el('h3', '', `${heading}${r.dr > 1 ? ` (${r.dr})` : ''}`));
+		const table = el('table');
+		list.forEach(([name, low, high, rank, maps, chance, quest, source], index) => {
+			const tr = el('tr');
+			if (index >= SHOWN_DROPS) tr.hidden = true;
+			const who = el('td');
+			const link = el('a', '', name);
+			link.href = `https://www.wowhead.com/forever/${source < 0 ? 'object' : 'npc'}=${Math.abs(source)}`;
+			link.target = '_blank';
+			link.rel = 'noopener';
+			who.append(link);
+			const about = [source < 0 ? 'Object' : low ? `Level ${low === high ? low : `${low}-${high}`}` : '', RANK[rank], maps].filter(Boolean).join(' · ');
+			if (about) who.append(el('div', 'drop-about', about));
+			tr.append(who, el('td', 'drop-chance', `${chance < 0.01 ? '<0.01' : chance}%${quest ? ' (quest)' : ''}`));
+			table.append(tr);
+		});
+		box.append(table);
+		if (list.length > SHOWN_DROPS) {
+			const more = el('button', 'ghost wide', `Show ${list.length - SHOWN_DROPS} more`);
+			more.onclick = () => { for (const tr of table.rows) tr.hidden = false; more.remove(); };
+			box.append(more);
+		}
+		if (r.dr > list.length) box.append(el('p', 'drop-note', `${r.dr - list.length} more sources with lower chances are not listed.`));
+		box.append(el('p', 'drop-note', `Chances from the ${META.drops} loot tables (World of Warcraft 1.12). Forever's own drops can differ.`));
+		return box;
 	}
 
 	async function buildTooltip(id, nested) {
@@ -441,7 +501,7 @@
 		const copyID = el('button', 'ghost', `Copy ID ${id}`);
 		copyID.onclick = () => copy(String(id), copyID);
 		const wowhead = el('a', 'ghost', 'Wowhead');
-		wowhead.href = `https://www.wowhead.com/forever/item=${id}`;
+		wowhead.href = wowheadURL(id);
 		wowhead.target = '_blank';
 		wowhead.rel = 'noopener';
 		actions.append(link, copyID, wowhead);
@@ -456,6 +516,10 @@
 			actions.append(made);
 		}
 		panel.append(actions);
+
+		const sources = await dropSources(id);
+		if (state.item !== id) return; // another item was opened meanwhile
+		if (sources?.length) panel.append(dropSection(r, sources));
 
 		const table = el('table');
 		const row = (label, value) => {
@@ -720,6 +784,8 @@
 				<tr><td><code>slot:head type:sword</code></td><td>equipment slot, item type or category</td></tr>
 				<tr><td><code>class:hunter</code></td><td>usable by that class</td></tr>
 				<tr><td><code>is:boe is:bop is:set is:unique is:random</code></td><td>also use, equip, proc, quest, reagent, recipe, vendor, conjured</td></tr>
+				<tr><td><code>is:drop</code></td><td>dropped by a creature or found in a chest</td></tr>
+				<tr><td><code>-is:test</code></td><td>hide test and unused items (<code>is:test</code> shows only them)</td></tr>
 				<tr><td><code>has:fireres</code></td><td>has any amount of a stat or value</td></tr>
 				<tr><td><code>set:gladiator</code></td><td>items of a set</td></tr>
 			</table>
@@ -785,6 +851,7 @@
 		});
 		viewport.addEventListener('mouseleave', hideTip);
 		viewport.addEventListener('click', (event) => {
+			if (event.target.closest('a')) return; // the Wowhead link opens its own tab
 			const row = event.target.closest('.row');
 			if (row) { hideTip(); openDetail(Number(row.dataset.id)); }
 		});

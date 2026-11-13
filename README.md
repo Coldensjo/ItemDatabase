@@ -1,7 +1,8 @@
 # Item Database
 
 Every World of Warcraft Forever item in one filterable list with in-game tooltips, hosted on GitHub Pages.
-The data is read from the game's own files. Nothing is scraped from other websites.
+The data is read from the game's own files. Nothing is scraped from other websites. The one exception is
+where items drop, which only the server knows: that comes from a local VMaNGOS database (see below).
 
 ## Using the site
 
@@ -13,8 +14,11 @@ The data is read from the game's own files. Nothing is scraped from other websit
   compared with a value.
 - **Columns**: click a header to sort. The Columns button adds any stat or value as a column. A stat you
   filter on is shown automatically.
-- Hover an item for its tooltip, click it for a panel with the tooltip and every value.
+- Hover an item for its tooltip, click it for a panel with the tooltip, every value, and the creatures and
+  chests it drops from with their chances. The **Wowhead** link on each row opens the item on Wowhead.
 - **Copy link** copies the address with all filters in it.
+- `-is:test` (or the "Hide test and unused items" filter) hides developer items; `is:drop` lists items that
+  drop from creatures or chests.
 
 ## Updating
 
@@ -25,6 +29,7 @@ The data is read from the game's own files. Nothing is scraped from other websit
 | `install-addon.bat` | Copy the Item Harvest addon into the game |
 | `install-autostart.bat` | Run the watcher hidden at every Windows login: it rebuilds and publishes when the game is patched or the game cache changes |
 | `uninstall-autostart.bat` | Stop the watcher and remove it from startup |
+| `drops.bat` | Read where items drop from the VMaNGOS database into `tools/data/drops.json` |
 
 Requires [bun](https://bun.sh), git and ImageMagick (`magick`). The first run of `update.bat` downloads the
 tables (about 450 MB, kept in `tools/cache/`); later runs take about a minute.
@@ -54,6 +59,13 @@ item does not exist on the server.
 - Every build records which items are new or changed. The site lists these under **Updates** in the filters,
   and an item's panel shows when it last changed.
 
+### Drops
+
+Loot tables are not in the game files. `tools/drops.mjs` reads them from a VMaNGOS world database (the
+1.12 loot of creatures and chests, following reference tables and loot groups the way the server rolls them)
+and writes `tools/data/drops.json`, which is committed; the build adds it to the site. So `update.bat` does
+not need the database. Run `drops.bat` with the database running only to refresh the file.
+
 ## How it works
 
 - `tools/lib/gamedata.mjs` downloads the client tables (DB2 files) for the live build from Blizzard's CDN,
@@ -81,6 +93,9 @@ item does not exist on the server.
 - **Random enchantments**: the tooltip says `<Random enchantment>`; the possible suffixes are not listed.
 - A few placeholders in spell text depend on the player (level, attack power) and are left out.
 - Recipes show the item they create below their own tooltip.
+- **Drops** are VMaNGOS's version of 1.12 loot, not Forever's own: items new in Forever have none, and
+  Forever may have changed some chances. Each item lists its 40 likeliest sources; world drops have hundreds.
+  Vendors, quest rewards and crafting are not listed as sources.
 
 ## Settings (`config.json`)
 
@@ -89,6 +104,9 @@ item does not exist on the server.
 - `site_title`: header title.
 - `push`: `false` to only build.
 - `check_interval_minutes`: how often the watcher checks (default 15).
+- `drops`: the VMaNGOS database for `drops.bat`, default
+  `{"host": "127.0.0.1", "port": 3307, "user": "root", "database": "mangos", "patch": 10}` (add `password`
+  if needed). Requires the `mariadb` command line client.
 
 ## Development
 
